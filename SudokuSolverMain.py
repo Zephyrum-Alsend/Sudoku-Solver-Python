@@ -1,8 +1,10 @@
 #Author: Zephyrum Alsend
 #Sudoku Solver
-#Last Edited: 21/07/18
+#Last Edited: 21/07/20
 
 import copy
+from pathlib import Path
+from collections import Counter
 
 class Sudoku:
     
@@ -75,6 +77,48 @@ class Sudoku:
 
     def getMutable(self):
         return self.__mutable
+
+    def isLegal(self):
+        Illegal = []
+        x = 0
+        y = 0
+
+        while y < self.__size:
+            Legal = True
+            z = self.__puzzle[y][x]
+
+            if z != 0:
+                #Get the row
+                for i in self.__puzzle[y]:
+                    if i == z and i != x:
+                        Legal = False
+                        break
+
+                #Get the column
+                for i in self.__puzzle:
+                    if i[x] == z and i != y:
+                        Legal = False
+                        break
+
+                #Get the box
+                Bx = (x//self.__subsize) * self.__subsize
+                By = (y//self.__subsize) * self.__subsize
+
+                for i in range(By, By + self.__subsize):
+                    for j in range(Bx, Bx + self.__subsize):
+                        if self.__puzzle[i][j] == z:
+                            Legal = False
+                            break
+
+                if not Legal:
+                    Illegal.append( tuple(x, y) )
+
+            x += 1
+            if x >= self.__size:
+                x = 0
+                y += 1
+
+        return(Legal)
         
     #Solves the puzzle and stores the result in __solved.
     def solveSudoku(self):
@@ -171,20 +215,59 @@ def printTable(table):
         print('Parameter passed wasn\'t a table!')
         return(False)
 
-#Replace this with a file reader function
-SudokuPuzzle = [[0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 3, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 3, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 5, 3, 2],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0]]
+#Reads .txt files in a given folder, interpeting them as Sudoku puzzles.
+#Will return a list of tables, each table being a Sudoku puzzle.
+#Will return an empty list if an error occured.
+def readSudokuPuzzles(strPath):
+    try:
+        Folder = Path(strPath).rglob("*.txt")
+    except Exception as e:
+        print(repr(e))
+        return([])
+    
+    Files = [x for x in Folder]
+    Puzzles = []
+    for name in Files:
+        f = open(name, "r")
+        arr = []
+        arr.append(f.readlines()) #each file is now a list of strings in arr
+        
+        for file in arr:
+            #Convert each file into a 2-D array
+            temp = []
+            try:
+                for row in file:
+                    temp.append(list(map(int, row.split())))
+
+            except Exception as e:
+                print("File " + str(name) + " is not formatted correctly.")
+                print(repr(e))
+                print("Correct format looks like:\n" +
+                "1 4 5 0 0 0 0 0 0\n" +
+                "9 3 6 0 0 0 0 0 0\n" +
+                "8 7 2 0 0 0 0 0 0\n" +
+                "0 0 0 1 4 5 0 0 0\n" +
+                "0 0 0 9 3 6 0 0 0\n" +
+                "0 0 0 8 7 2 0 0 0\n" +
+                "2 6 7 0 0 0 1 4 5\n" +
+                "4 1 8 0 0 0 9 3 6\n" +
+                "5 9 3 0 0 0 8 7 2\n")
+                return([])
+
+            #Append each converted table
+            Puzzles.append(temp)
+
+        f.close()
+
+    return(Puzzles)
 
 ##########MAIN##########
 
-S = Sudoku(SudokuPuzzle)
-printTable(S.getPuzzle())
-printTable(S.getSolution())
-print(S.getMutable())
+PuzzlePath = "Puzzles/"
+P = readSudokuPuzzles(PuzzlePath)
+for X in P:
+    S = Sudoku(X)
+    printTable(S.getPuzzle())
+    printTable(S.getSolution())
+    print(S.getMutable())
+    print()
