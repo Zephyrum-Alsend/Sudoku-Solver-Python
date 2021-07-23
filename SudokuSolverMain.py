@@ -1,51 +1,18 @@
 #Author: Zephyrum Alsend
 #Sudoku Solver
-#Last Edited: 21/07/22
+#Last Edited: 21/07/23
 
 import copy
 from pathlib import Path
-from collections import Counter
 
 class Sudoku:
     
+    #Input sanitation is handled outside the class, so assumes all is fine.
     def __init__(self, puzzle):
         self.__puzzle = puzzle
         self.__solved = copy.deepcopy(puzzle)
-        self.__size = 0
-        self.__subsize = 0
-        self.__mutable = 0
-
-        #Ensure the board passed is 1.) usable data 2.) not breaking any rules
-        try:
-            self.__size = len(self.__puzzle)
-            self.__subsize = self.__size**0.5
-
-            if (self.__subsize).is_integer():
-                self.__subsize = int(self.__subsize)
-            else:
-                raise Exception("Column length is not the square of a whole number.")
-            
-            for row in self.__puzzle:
-                if len(row) != self.__size:
-                    raise Exception("Row length does not match column length.")
-                
-                for val in row:
-                    if isinstance(val, int):
-                        if not ( 0 <= val <= self.__size ):
-                            raise Exception("Integer value out of bounds.")
-                    else:
-                        raise Exception("Non-integer data found.")
-        except Exception as e:
-            print("The board provided is invalid. Please double-check the data.")
-            print(repr(e))
-            return
-
-        Illegal = self.isLegal()
-        if len(Illegal) > 0:
-            for e in Illegal:
-                print(e)
-            return
-
+        self.__size = len(puzzle)
+        self.__subsize = int(self.__size**0.5)
         self.__mutable = self.getMutableCount()
 
         #Solve the board
@@ -88,46 +55,6 @@ class Sudoku:
     def getMutable(self):
         return self.__mutable
 
-    #Checks all immutable values obey the rules of Sudoku.
-    #Returns a list of messages dictating where illegal numbers are.
-    #Returns an empty list if everything is legal.
-    def isLegal(self):
-        Illegal = []
-
-        Columns = [[]]
-        for y in range(0, self.__size):
-            #Get a list of all !0 values in this row
-            temp = [n for n in self.__puzzle[y] if n != 0]
-            if len(set(temp)) != len(temp):
-                Illegal.append("Illegal placement in row " + str(y+1) + ".")
-
-        for x in range(0, self.__size):
-            #Get a list of all !0 values in this column
-            temp = []
-            for y in self.__puzzle:
-                if y[x] != 0:
-                    temp.append(y[x])
-            if len(set(temp)) != len(temp):
-                Illegal.append("Illegal placement in column " + str(x+1) + ".")
-
-        #Get the boxes
-        for y in range(0, self.__subsize):
-            for x in range(0, self.__subsize):
-                temp = []
-
-                Bx = x * self.__subsize
-                By = y * self.__subsize
-
-                for i in range(By, By + self.__subsize):
-                    for j in range(Bx, Bx + self.__subsize):
-                        if self.__puzzle[i][j] != 0:
-                            temp.append(self.__puzzle[i][j])
-
-                if len(set(temp)) != len(temp):
-                    Illegal.append("Illegal placement in box " + str(y * self.__subsize + x + 1) + ".")
-
-        return(Illegal)
-        
     #Solves the puzzle and stores the result in __solved.
     def solveSudoku(self):
         x = 0
@@ -225,7 +152,8 @@ def printTable(table):
 
 #Reads .txt files in a given folder, interpeting them as Sudoku puzzles.
 #Will return a list of tables, each table being a Sudoku puzzle.
-#Will return an empty list if an error occured.
+#Files which throw errors are not included, instead prompting a console log.
+#Will return an empty list if the folder path throws an error.
 def readSudokuPuzzles(strPath):
     try:
         Folder = Path(strPath).rglob("*.txt")
@@ -247,9 +175,19 @@ def readSudokuPuzzles(strPath):
                 for row in file:
                     temp.append(list(map(int, row.split())))
 
+                #Check the rules of Sudoku are followed
+                estr = isIllegal(temp)
+                if len(estr) > 0:
+                    raise Exception("Illegal board config.")
+                
+                #Append each converted table
+                Puzzles.append(temp)
+
             except Exception as e:
                 print("File " + str(name) + " is not formatted correctly.")
                 print(repr(e))
+                for err in estr:
+                    print(err)
                 print("Correct format looks like:\n" +
                 "1 4 5 0 0 0 0 0 0\n" +
                 "9 3 6 0 0 0 0 0 0\n" +
@@ -260,47 +198,69 @@ def readSudokuPuzzles(strPath):
                 "2 6 7 0 0 0 1 4 5\n" +
                 "4 1 8 0 0 0 9 3 6\n" +
                 "5 9 3 0 0 0 8 7 2\n")
-                return([])
-
-            #Append each converted table
-            Puzzles.append(temp)
 
         f.close()
 
     return(Puzzles)
 
-def checkFile(puzzle):
-    #Ensure the board passed is 1.) usable data 2.) not breaking any rules
-    try:
-        size = len(puzzle)
-        subsize = size**0.5
+#Ensure the board passed is legal: dimensions are OK, numbers in bounds, etc.
+#Returns a list of error strings. Empty list if no errors.
+def isIllegal(puzzle):
+    errors = []
+    size = len(puzzle)
+    subsize = size**0.5
 
-        if (subsize).is_integer():
-            subsize = int(subsize)
-        else:
-            raise Exception("Column length is not the square of a whole number.")
+    #Check board size allows for uniform sub-boxes
+    if (subsize).is_integer():
+        subsize = int(subsize)
+    else:
+        errors.append("Column length is not the square of a whole number.")
             
-        for row in puzzle:
-            if len(row) != size:
-                raise Exception("Row length does not match column length.")
-                
-            for val in row:
-                if isinstance(val, int):
-                    if not ( 0 <= val <= size ):
-                        raise Exception("Integer value out of bounds.")
-                else:
-                    raise Exception("Non-integer data found.")
+    #Check every row is the same length as a column
+    for row in puzzle:
+        if len(row) != size:
+            errors.append("Row length does not match column length.")
+            break #Prevents duplicates of this error message
+        
+    #Check for duplicate numbers in each row
+    for y in range(0, size):
+        #Get a list of all !0 values in this row
+        temp = [n for n in puzzle[y] if n != 0]
+        if len(set(temp)) != len(temp):
+            errors.append("Repeat number in row " + str(y+1) + ".")
 
-    except Exception as e:
-        print("The board provided is invalid. Please double-check the data.")
-        print(repr(e))
-        return
+    #Check for duplicate numbers in each column
+    for x in range(0, size):
+        #Get a list of all !0 values in this column
+        temp = []
+        for y in puzzle:
+            if y[x] != 0:
+                temp.append(y[x])
+        if len(set(temp)) != len(temp):
+            errors.append("Repeat number in column " + str(x+1) + ".")
 
-    Illegal = isLegal(puzzle)
-    if len(Illegal) > 0:
-        for e in Illegal:
-            print(e)
-        return
+    #Check for duplicate numbers in each box
+    for y in range(0, subsize):
+        for x in range(0, subsize):
+            temp = []
+
+            Bx = x * subsize
+            By = y * subsize
+            for i in range(By, By + subsize):
+                for j in range(Bx, Bx + subsize):
+                    if puzzle[i][j] != 0:
+                        temp.append(puzzle[i][j])
+
+            if len(set(temp)) != len(temp):
+                errors.append("Repeat number in box " + str(y * subsize + x + 1) + ".")
+
+    #Check for out of bounds numbers
+    for y in range(0, size):
+        for x in range(0, size):
+            if not(0 <= puzzle[y][x] <= size):
+                errors.append("Out of bounds number in column " + str(x+1) + ", row " + str(y+1) + ".")
+
+    return(errors)
 
 
 ##########MAIN##########
