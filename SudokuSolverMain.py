@@ -211,16 +211,15 @@ def isIllegal(puzzle):
     subsize = size**0.5
 
     #Check board size allows for uniform sub-boxes
-    if (subsize).is_integer():
-        subsize = int(subsize)
-    else:
+    if not (subsize).is_integer():
         errors.append("Column length is not the square of a whole number.")
-            
+        return(errors) #Return early, rest of func assumes board isn't malformed
+    
     #Check every row is the same length as a column
     for row in puzzle:
         if len(row) != size:
             errors.append("Row length does not match column length.")
-            break #Prevents duplicates of this error message
+            return(errors) #Return early, rest of func assumes board isn't malformed
         
     #Check for duplicate numbers in each row
     for y in range(0, size):
@@ -240,6 +239,7 @@ def isIllegal(puzzle):
             errors.append("Repeat number in column " + str(x+1) + ".")
 
     #Check for duplicate numbers in each box
+    subsize = int(subsize)        
     for y in range(0, subsize):
         for x in range(0, subsize):
             temp = []
