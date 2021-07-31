@@ -1,13 +1,16 @@
 #Author: Zephyrum Alsend
 #Sudoku Solver
-#Last Edited: 21/07/23
+#Contains a class for solving sudoku puzzles, functions to interpret .txt files as sudoku puzzles and a function to print tables neatly.
+#Last Edited: 21/07/31
 
 import copy
 from pathlib import Path
+import SudokuGenerator
 
 class Sudoku:
     
     #Input sanitation is handled outside the class, so assumes all is fine.
+    #puzzle is a square 2-D array containing unsigned integers.
     def __init__(self, puzzle):
         self.__puzzle = puzzle
         self.__solved = copy.deepcopy(puzzle)
@@ -88,6 +91,8 @@ class Sudoku:
         return(True)
 
     #Returns the list of numbers which cannot go in (x, y).
+    #x is a valid index.
+    #y is a valid index.
     def getInvalidNum(self, x, y):
         invalid = [0]
 
@@ -115,6 +120,8 @@ class Sudoku:
     #Returns a valid value for (x, y), given the current value (floor), maximum size and a list of invalid values.
     #Returns 0 if no valid value was found.
     #Starts at floor + 1; if solveSudoku backtracked to floor, that means floor doesn't work.
+    #floor is an unsigned integer in range(1, self.__size+1).
+    #invalid is a list of unsigned integers.
     def getValidNum(self, floor, invalid):
         num = floor + 1
         while num in invalid and num <= self.__size:
@@ -137,6 +144,7 @@ class Sudoku:
 #Prints a table to console.
 #Returns True when successful; returns False if an exception arose.
 #Converts entire table to a string before printing, incase the error arises halfway so we don't have half a table printed then ERROR.
+#table is a 2-D array.
 def printTable(table):
     try:
         strTable = ''
@@ -154,6 +162,7 @@ def printTable(table):
 #Will return a list of tables, each table being a Sudoku puzzle.
 #Files which throw errors are not included, instead prompting a console log.
 #Will return an empty list if the folder path throws an error.
+#strPath is a valid directory.
 def readSudokuPuzzles(strPath):
     try:
         Folder = Path(strPath).rglob("*.txt")
@@ -205,6 +214,7 @@ def readSudokuPuzzles(strPath):
 
 #Ensure the board passed is legal: dimensions are OK, numbers in bounds, etc.
 #Returns a list of error strings. Empty list if no errors.
+#puzzle is a 2-D array containing integers.
 def isIllegal(puzzle):
     errors = []
     size = len(puzzle)
@@ -264,12 +274,23 @@ def isIllegal(puzzle):
 
 
 ##########MAIN##########
+def main():
+    try:
+        PuzzlePath = input("Enter a path to a folder of Sudoku.txt files:\n")
+    except:
+        PuzzlePath = ""
+    finally:
+        if PuzzlePath == "":
+            PuzzlePath = "Puzzles/"
+    
+    SudokuGenerator.generateSudokuPuzzles(3, 9, PuzzlePath)
+    P = readSudokuPuzzles(PuzzlePath)
+    for X in P:
+        S = Sudoku(X)
+        printTable(S.getPuzzle())
+        printTable(S.getSolution())
+        print(S.getMutable())
+        print()
 
-PuzzlePath = "Puzzles/"
-P = readSudokuPuzzles(PuzzlePath)
-for X in P:
-    S = Sudoku(X)
-    printTable(S.getPuzzle())
-    printTable(S.getSolution())
-    print(S.getMutable())
-    print()
+if __name__ == "__main__":
+    main()
