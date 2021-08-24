@@ -283,7 +283,7 @@ def main():
         if PuzzlePath == "":
             PuzzlePath = "Puzzles/"
     
-    SudokuGenerator.generateSudokuPuzzles(3, 9, PuzzlePath)
+    SudokuGenerator.writeSudokuPuzzles(3, 9, PuzzlePath)
     P = readSudokuPuzzles(PuzzlePath)
     for X in P:
         S = Sudoku(X)
@@ -291,6 +291,9 @@ def main():
         printTable(S.getSolution())
         print(S.getMutable())
         print()
+
+def main2():
+    printTable(SudokuGenerator.generatePuzzle())
 
 if __name__ == "__main__":
     main()
